@@ -51,7 +51,9 @@ new Product('wine-glass');
 
 function randomIndexGenerator(){
   let number = Math.floor(Math.random() * allProducts.length);
-  if (number === allProducts.length) {number = allProducts.length-1;}
+  if (number === allProducts.length) {
+    number = allProducts.length-1;
+  }
   return number;
 }
 
