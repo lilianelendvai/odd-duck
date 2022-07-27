@@ -1,7 +1,7 @@
 'use strict';
 
 // ******** GLOBAL VARIABLES **************
-let votesCountDown = 5;
+let votesCountDown = 10;
 let allProducts = [];
 let numberOfImages = 3;
 let allImages = [];
@@ -14,7 +14,7 @@ for (let i = 0; i < numberOfImages; i++){
 }
 
 let resultsBtn  = document.getElementById('results-btn');
-let productList = document.getElementById('list-of-products');
+// let productList = document.getElementById('list-of-products');
 
 // ********* CONSTRUCTOR FUNCTION *************
 
@@ -57,16 +57,16 @@ function randomIndexGenerator(){
   return number;
 }
 
-function renderImages(){
-  // https://www.freecodecamp.org/news/how-to-use-javascript-collections-map-and-set/
-  let indexes = new Set();
 
+let selectedProductHistoryQueue = [];
+
+function renderImages(){
   for (let i = 0; i < numberOfImages; i++){
     let currentIndex = randomIndexGenerator();
-    while(indexes.has(currentIndex)){
+    while(selectedProductHistoryQueue.includes(currentIndex)){
       currentIndex = randomIndexGenerator();
     }
-    indexes.add(currentIndex);
+    selectedProductHistoryQueue.push(currentIndex);
     let img = allImages[i];
     img.src = allProducts[currentIndex].photo;
     img.alt = allProducts[currentIndex].name;
@@ -74,9 +74,68 @@ function renderImages(){
     allProducts[currentIndex].views++;
   }
 
+  // Ensure only the last set of numbers are remembered for the next time we renderImages()
+  while(selectedProductHistoryQueue.length > numberOfImages){
+    selectedProductHistoryQueue.shift();
+  }
+
 }
 
-renderImages();
+
+let productsChartCanvas = document.getElementById('products-chart');
+
+function renderChart(){
+  let productNames = [];
+  let productVotes = [];
+  let productViews = [];
+
+  // Prepare variables use in the chartSettings objects created below
+  for(let i = 0; i < allProducts.length;i++){
+    productNames.push(allProducts[i].name);
+    productVotes.push(allProducts[i].votes);
+    productViews.push(allProducts[i].views);
+  }
+  
+  let chartSettings = {
+    type: 'bar',
+    data: {
+      labels: productNames,
+      datasets: [{
+        label: '# of Votes',
+        data: productVotes,
+        backgroundColor: [
+          '#ff7300'
+        ],
+        borderColor: [
+          '#ff7300'
+        ],
+        borderWidth: 1
+      },
+      {
+        label: '# of Views',
+        data: productViews,
+        backgroundColor: [
+          '#ff0000'
+        ],
+        borderColor: [
+          '#ff0000'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+
+  };
+
+  // Constructor Call defined in the Chart.js library
+  new Chart(productsChartCanvas,chartSettings);
+}
 
 // *********** EVENT HANDLERS  *****************
 
@@ -90,26 +149,35 @@ function handleClickOfImages(event){
     }
   }
 
-  renderImages();
-
   if(votesCountDown === 0){
+    // No more votes can be done
     productsImageContainer.removeEventListener('click', handleClickOfImages);
-
+    productsImageContainer.style.visibility = 'hidden';
     resultsBtn.addEventListener('click', handleClickOfViewResult);
     resultsBtn.style.visibility = 'visible';
+  } else {
+    // ready for next vote
+    renderImages();
   }
 }
 
 function handleClickOfViewResult(){
-  for(let i = 0; i < allProducts.length; i++){
-    let liElem = document.createElement('li');
-    liElem.textContent = `${allProducts[i].name}: views: ${allProducts[i].views}, votes: ${allProducts[i].votes}`;
-    productList.appendChild(liElem);
-  }
   resultsBtn.removeEventListener('click', handleClickOfViewResult);
+
+  // Previous method to display result via an unordered list.
+  // for(let i = 0; i < allProducts.length; i++){
+  //   let liElem = document.createElement('li');
+  //   liElem.textContent = `${allProducts[i].name}: views: ${allProducts[i].views}, votes: ${allProducts[i].votes}`;
+  //   productList.appendChild(liElem);
+  // }
+
+  renderChart();
+
 }
+
+// To start the first vote.
+renderImages();
 
 // ********* EVENT LISTENERS *******************
 resultsBtn.style.visibility = 'hidden';
 productsImageContainer.addEventListener('click', handleClickOfImages);
-
