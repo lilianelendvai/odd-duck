@@ -1,10 +1,13 @@
 'use strict';
 
 // ******** GLOBAL VARIABLES **************
-let votesCountDown = 10;
+let votesCountDown = 15;
+
 let allProducts = [];
 let numberOfImages = 3;
 let allImages = [];
+let selectedProductHistoryQueue = [];
+let restoredFromLocalStorage = false;
 
 // ********* DOM REFERENCES ****************
 let productsImageContainer = document.getElementById('product-container');
@@ -14,10 +17,22 @@ for (let i = 0; i < numberOfImages; i++){
 }
 
 let resultsBtn  = document.getElementById('results-btn');
-// let productList = document.getElementById('list-of-products');
+let restartBtn  = document.getElementById('restart-btn');
+
+// ********* LOCAL STORAGE SUPPORT ************
+function storeToLocalStorage(){
+  localStorage.setItem('allProducts',JSON.stringify(allProducts));
+  localStorage.setItem('selectedProductHistoryQueue',JSON.stringify(selectedProductHistoryQueue));
+  localStorage.setItem('votesCountDown',votesCountDown.toString());
+}
+
+function clearLocalStorage(){
+  localStorage.removeItem('allProducts');
+  localStorage.removeItem('selectedProductHistoryQueue');
+  localStorage.removeItem('votesCountDown');
+}
 
 // ********* CONSTRUCTOR FUNCTION *************
-
 function Product(name, imageExtension = 'jpg'){
   this.name = name;
   this.photo = `img/${name}.${imageExtension}`;
@@ -26,26 +41,43 @@ function Product(name, imageExtension = 'jpg'){
   allProducts.push(this);
 }
 
-// ********* OBJECT CREATION ******************
-new Product('bag');
-new Product('banana');
-new Product('bathroom');
-new Product('boots');
-new Product('breakfast');
-new Product('bubblegum');
-new Product('chair');
-new Product('cthulhu');
-new Product('dog-duck');
-new Product('dragon');
-new Product('pen');
-new Product('pet-sweep');
-new Product('scissors');
-new Product('shark');
-new Product('sweep','png');
-new Product('tauntaun');
-new Product('unicorn');
-new Product('water-can');
-new Product('wine-glass');
+// ********* OBJECT CREATION or RECREATION ******************
+let retreivedProducts = localStorage.getItem('allProducts');
+
+if (retreivedProducts){
+  restoredFromLocalStorage = true;
+  let parsedProducts = JSON.parse(retreivedProducts);
+  // we have saved information in the local storage
+  for (let i = 0; i < parsedProducts.length; i++){
+    let objectProduct = new Product(parsedProducts[i].name);
+    objectProduct.photo = parsedProducts[i].photo;
+    objectProduct.views = parsedProducts[i].views;
+    objectProduct.votes = parsedProducts[i].votes;
+  }
+  votesCountDown = parseInt(localStorage.getItem('votesCountDown'));
+  selectedProductHistoryQueue = JSON.parse(localStorage.getItem('selectedProductHistoryQueue'));
+
+} else {
+  new Product('bag');
+  new Product('banana');
+  new Product('bathroom');
+  new Product('boots');
+  new Product('breakfast');
+  new Product('bubblegum');
+  new Product('chair');
+  new Product('cthulhu');
+  new Product('dog-duck');
+  new Product('dragon');
+  new Product('pen');
+  new Product('pet-sweep');
+  new Product('scissors');
+  new Product('shark');
+  new Product('sweep','png');
+  new Product('tauntaun');
+  new Product('unicorn');
+  new Product('water-can');
+  new Product('wine-glass');
+}
 
 // *********** HELPER FUNCTIONS ***************
 
@@ -56,9 +88,6 @@ function randomIndexGenerator(){
   }
   return number;
 }
-
-
-let selectedProductHistoryQueue = [];
 
 function renderImages(){
   for (let i = 0; i < numberOfImages; i++){
@@ -79,8 +108,8 @@ function renderImages(){
     selectedProductHistoryQueue.shift();
   }
 
+  storeToLocalStorage();
 }
-
 
 let productsChartCanvas = document.getElementById('products-chart');
 
@@ -95,7 +124,7 @@ function renderChart(){
     productVotes.push(allProducts[i].votes);
     productViews.push(allProducts[i].views);
   }
-  
+
   let chartSettings = {
     type: 'bar',
     data: {
@@ -155,6 +184,7 @@ function handleClickOfImages(event){
     productsImageContainer.style.visibility = 'hidden';
     resultsBtn.addEventListener('click', handleClickOfViewResult);
     resultsBtn.style.visibility = 'visible';
+    storeToLocalStorage(); // Just in case we want to display the final result
   } else {
     // ready for next vote
     renderImages();
@@ -163,21 +193,50 @@ function handleClickOfImages(event){
 
 function handleClickOfViewResult(){
   resultsBtn.removeEventListener('click', handleClickOfViewResult);
+  resultsBtn.style.visibility = 'hidden';
 
-  // Previous method to display result via an unordered list.
-  // for(let i = 0; i < allProducts.length; i++){
-  //   let liElem = document.createElement('li');
-  //   liElem.textContent = `${allProducts[i].name}: views: ${allProducts[i].views}, votes: ${allProducts[i].votes}`;
-  //   productList.appendChild(liElem);
-  // }
+  restartBtn.addEventListener('click', handleClickOfRestart);
+  restartBtn.style.visibility = 'visible';
 
   renderChart();
-
 }
 
-// To start the first vote.
-renderImages();
+function handleClickOfRestart(){
+  clearLocalStorage();
+  location.reload(); // https://stackoverflow.com/questions/3715047/how-to-reload-a-page-using-javascript
+}
 
-// ********* EVENT LISTENERS *******************
-resultsBtn.style.visibility = 'hidden';
-productsImageContainer.addEventListener('click', handleClickOfImages);
+// ********* SET EVENT LISTENERS / RESTORE PAGE STATE *******************
+// We need to test on votesCountDown since we could have restored it from localstorage
+if (restoredFromLocalStorage){
+  if (votesCountDown > 0){
+    // Still have votes to do.
+    if (selectedProductHistoryQueue.length === 0){ //Did not vote yet
+      renderImages();
+    } else {
+      //Redisplay the last rendered images
+      for (let i = 0; i < numberOfImages; i++){
+        let currentIndex = selectedProductHistoryQueue[i];
+        let img = allImages[i];
+        img.src = allProducts[currentIndex].photo;
+        img.alt = allProducts[currentIndex].name;
+        img.name = allProducts[currentIndex].name;
+      }
+    }
+
+    resultsBtn.style.visibility = 'hidden';
+    restartBtn.style.visibility = 'hidden';
+    productsImageContainer.addEventListener('click', handleClickOfImages);
+
+  } else {
+    //Behave as if we clicked View Result and the image containers should not be visible
+    productsImageContainer.style.visibility = 'hidden';
+    handleClickOfViewResult();
+  }
+
+} else {
+  resultsBtn.style.visibility = 'hidden';
+  restartBtn.style.visibility = 'hidden';
+  productsImageContainer.addEventListener('click', handleClickOfImages);
+  renderImages();
+}
