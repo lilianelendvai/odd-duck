@@ -1,7 +1,7 @@
 'use strict';
 
 // ******** GLOBAL VARIABLES **************
-let votesCountDown = 15;
+let votesCountDown = 25;
 
 let allProducts = [];
 let numberOfImages = 3;
